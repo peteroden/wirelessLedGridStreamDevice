@@ -19,10 +19,12 @@ To change colors on the module (Neopixels on Pin 2), simply go to the root URL o
 #include <WebSocketsClient.h>
 //#include <WebSocketsServer.h>
 #include <ESP8266WebServer.h>
-//#include <ESP8266mDNS.h> 
+#include <ESP8266mDNS.h> 
 #include <FastLED.h>
 #include <ESP8266HTTPUpdateServer.h>
 #include <WiFiManager.h>
+#include <WiFiUdp.h>
+#include <ArduinoOTA.h>
 
 #include <Hash.h>
 
@@ -75,7 +77,7 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
         case WStype_BIN:
             USE_SERIAL.printf("[WSc] get binary length: %u\n", length);
             hexdump(payload, length);
-            updateFrame();
+            updateFrame(uint8);
             
             // send data to server
             // webSocket.sendBIN(payload, lenght);
@@ -87,7 +89,6 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
 void setup() {
     USE_SERIAL.begin(115200);
     USE_SERIAL.setDebugOutput(true);
-
     USE_SERIAL.println();
 
     WiFiManager wifiManager;
@@ -136,7 +137,42 @@ void updateFrame(uint8_t * framepayload, size_t length) {
     }
 }
 
+  // Port defaults to 8266
+  // ArduinoOTA.setPort(8266);
+
+  // Hostname defaults to esp8266-[ChipID]
+  // ArduinoOTA.setHostname("myesp8266");
+
+  // No authentication by default
+  // ArduinoOTA.setPassword((const char *)"123");
+
+  ArduinoOTA.onStart([]() {
+    USE_SERIAL.println("Start");
+  });
+  ArduinoOTA.onEnd([]() {
+    USE_SERIAL.println("\nEnd");
+  });
+  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+    USE_SERIAL.printf("Progress: %u%%\r", (progress / (total / 100)));
+  });
+  ArduinoOTA.onError([](ota_error_t error) {
+    USE_SERIAL.printf("Error[%u]: ", error);
+    if (error == OTA_AUTH_ERROR) USE_SERIAL.println("Auth Failed");
+    else if (error == OTA_BEGIN_ERROR) USE_SERIAL.println("Begin Failed");
+    else if (error == OTA_CONNECT_ERROR) USE_SERIAL.println("Connect Failed");
+    else if (error == OTA_RECEIVE_ERROR) USE_SERIAL.println("Receive Failed");
+    else if (error == OTA_END_ERROR) USE_SERIAL.println("End Failed");
+  });
+  ArduinoOTA.begin();
+  Serial.println("Ready");
+  Serial.print("IP address: ");
+  Serial.println(WiFi.localIP());
+
+
+
+
 void loop() {
+    ArduinoOTA.handle();
     webSocket.loop();
     FastLED.show();
     FastLED.delay(1000/60);
