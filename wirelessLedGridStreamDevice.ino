@@ -54,36 +54,56 @@ uint8_t gHue = 0;
 int mode = 0;
 
 void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
-
-
     switch(type) {
         case WStype_DISCONNECTED:
             USE_SERIAL.printf("[WSc] Disconnected!\n");
+            connectWS();
             break;
         case WStype_CONNECTED:
-            {
-                USE_SERIAL.printf("[WSc] Connected to url: %s\n",  payload);
-				
-			          // send message to server when Connected
-				        webSocket.sendTXT("Big Window Device Connected");
-            }
+            USE_SERIAL.printf("[WSc] Connected to url: %s\n",  payload);
+            // send message to server when Connected
+				    webSocket.sendTXT("Big Window Device Connected");
             break;
         case WStype_TEXT:
             USE_SERIAL.printf("[WSc] get text: %s\n", payload);
             updateFrame(payload, length);
-			// send message to server
-			// webSocket.sendTXT("message here");
+			      // send message to server
+			      // webSocket.sendTXT("message here");
             break;
         case WStype_BIN:
             USE_SERIAL.printf("[WSc] get binary length: %u\n", length);
-            hexdump(payload, length);
-            updateFrame(uint8);
+            //hexdump(payload, length);
+            updateFrame(payload, length);
             
             // send data to server
             // webSocket.sendBIN(payload, lenght);
             break;
     }
 
+}
+
+void connectWS() {
+    //webSocket.begin("wirelessledgridstream.azurewebsites.net", 80, "/", "device");
+    webSocket.begin("192.168.1.152", 3000, "/", "device");
+    //webSocket.setAuthorization("user", "Password"); // HTTP Basic Authorization
+    webSocket.onEvent(webSocketEvent);
+
+    //if(MDNS.begin("esp8266")) {
+    //    USE_SERIAL.println("MDNS responder started");
+    //}
+
+    // Add service to MDNS
+    //MDNS.addService("http", "tcp", 80);
+    //MDNS.addService("ws", "tcp", 81);
+
+    // Port defaults to 8266
+    // ArduinoOTA.setPort(8266);
+  
+    // Hostname defaults to esp8266-[ChipID]
+    // ArduinoOTA.setHostname("myesp8266");
+  
+    // No authentication by default
+    // ArduinoOTA.setPassword((const char *)"123");
 }
 
 void setup() {
@@ -107,23 +127,32 @@ void setup() {
     
     FastLED.setBrightness( BRIGHTNESS );
 
-    webSocket.begin("wirelessledgridstream.azurewebsites.net", 80, "/", "arduino");
-	  //webSocket.begin("192.168.1.152", 3000, "/", "arduino");
-    //webSocket.setAuthorization("user", "Password"); // HTTP Basic Authorization
-    webSocket.onEvent(webSocketEvent);
-
-    //if(MDNS.begin("esp8266")) {
-    //    USE_SERIAL.println("MDNS responder started");
-    //}
-
-    // Add service to MDNS
-    //MDNS.addService("http", "tcp", 80);
-    //MDNS.addService("ws", "tcp", 81);
+    connectWS();
+  
+    ArduinoOTA.onStart([]() {
+      USE_SERIAL.println("Start");
+    });
+    ArduinoOTA.onEnd([]() {
+      USE_SERIAL.println("\nEnd");
+    });
+    ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+      USE_SERIAL.printf("Progress: %u%%\r", (progress / (total / 100)));
+    });
+    ArduinoOTA.onError([](ota_error_t error) {
+      USE_SERIAL.printf("Error[%u]: ", error);
+      if (error == OTA_AUTH_ERROR) USE_SERIAL.println("Auth Failed");
+      else if (error == OTA_BEGIN_ERROR) USE_SERIAL.println("Begin Failed");
+      else if (error == OTA_CONNECT_ERROR) USE_SERIAL.println("Connect Failed");
+      else if (error == OTA_RECEIVE_ERROR) USE_SERIAL.println("Receive Failed");
+      else if (error == OTA_END_ERROR) USE_SERIAL.println("End Failed");
+    });
+    ArduinoOTA.begin();
+    Serial.println("Ready");
 }
 
 void updateFrame(uint8_t * framepayload, size_t length) {
 
-    uint32_t frame[] = {0x000000,0x000000,0x000000,0x000000,0x000000,0x000000,0x000000,0x000000,
+    /*uint32_t frame[] = {0x000000,0x000000,0x000000,0x000000,0x000000,0x000000,0x000000,0x000000,
             0x000000,0xFF0000,0x000000,0x00FF00,0x000000,0x0000FF,0x000000,0x000000,
             0x000000,0xFF0000,0x000000,0x00FF00,0x000000,0x0000FF,0x000000,0x000000,
             0x000000,0xFF0000,0x000000,0x00FF00,0x000000,0x0000FF,0x000000,0x000000,
@@ -131,50 +160,17 @@ void updateFrame(uint8_t * framepayload, size_t length) {
             0x000000,0xFF0000,0x000000,0x00FF00,0x000000,0x0000FF,0x000000,0x000000,
             0x000000,0xFF0000,0x000000,0x00FF00,0x000000,0x0000FF,0x000000,0x000000,
             0x000000,0x000000,0x000000,0x000000,0x000000,0x000000,0x000000,0x000000};
-    //leds = (uint32_t) frame;
-    for(int i=0;i<NUM_LEDS;i++) {
-        leds[i]=frame[i];
-    }
+    */
+    memcpy(&leds, framepayload, length);
+    //for(int i=0;i<NUM_LEDS;i++) {
+    //    leds[i]=frame[i];
+    //}
 }
-
-  // Port defaults to 8266
-  // ArduinoOTA.setPort(8266);
-
-  // Hostname defaults to esp8266-[ChipID]
-  // ArduinoOTA.setHostname("myesp8266");
-
-  // No authentication by default
-  // ArduinoOTA.setPassword((const char *)"123");
-
-  ArduinoOTA.onStart([]() {
-    USE_SERIAL.println("Start");
-  });
-  ArduinoOTA.onEnd([]() {
-    USE_SERIAL.println("\nEnd");
-  });
-  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
-    USE_SERIAL.printf("Progress: %u%%\r", (progress / (total / 100)));
-  });
-  ArduinoOTA.onError([](ota_error_t error) {
-    USE_SERIAL.printf("Error[%u]: ", error);
-    if (error == OTA_AUTH_ERROR) USE_SERIAL.println("Auth Failed");
-    else if (error == OTA_BEGIN_ERROR) USE_SERIAL.println("Begin Failed");
-    else if (error == OTA_CONNECT_ERROR) USE_SERIAL.println("Connect Failed");
-    else if (error == OTA_RECEIVE_ERROR) USE_SERIAL.println("Receive Failed");
-    else if (error == OTA_END_ERROR) USE_SERIAL.println("End Failed");
-  });
-  ArduinoOTA.begin();
-  Serial.println("Ready");
-  Serial.print("IP address: ");
-  Serial.println(WiFi.localIP());
-
-
-
 
 void loop() {
     ArduinoOTA.handle();
     webSocket.loop();
     FastLED.show();
-    FastLED.delay(1000/60);
-    webSocket.sendTXT("test");
+    FastLED.delay(1000/30);
+    //webSocket.sendTXT("test");
 }
