@@ -83,8 +83,8 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
 }
 
 void connectWS() {
-    //webSocket.begin("wirelessledgridstream.azurewebsites.net", 80, "/", "device");
-    webSocket.begin("192.168.1.152", 3000, "/", "device");
+    //webSocket.begin("wirelessledgridstream.azurewebsites.net", 80, "/", "devices");
+    webSocket.begin("192.168.1.152", 3000, "/", "device0001");
     //webSocket.setAuthorization("user", "Password"); // HTTP Basic Authorization
     webSocket.onEvent(webSocketEvent);
 
